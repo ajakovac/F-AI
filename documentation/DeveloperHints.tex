@@ -1,0 +1,69 @@
+\documentclass[a4paper]{article}
+
+\usepackage[utf8]{inputenc}
+\usepackage[english]{babel}
+\usepackage{hyperref}
+
+\begin{document}
+
+\section*{Install opencl for Intel}
+Run the following in this order:
+\begin{itemize}
+\item  Generic ubuntu packages for OpenCL:
+  \begin{itemize}
+  \item sudo apt install ocl-icd-libopencl1
+  \item sudo apt install opencl-headers
+  \item sudo apt install clinfo
+  \end{itemize}
+\item Package that allows to compile OpenCL code:
+   \begin{itemize}
+   \item sudo apt install ocl-icd-opencl-dev
+   \end{itemize}
+\item For Intel GT core (e.g: us):
+  \begin{itemize}
+   \item sudo apt install beignet
+   \end{itemize}
+ \end{itemize}
+NOTE: for opencl with NVIDIA, it is enough to install the driver.
+
+\section*{OpenCL 2.0 with NVIDIA cards}
+How to run opencl 2.0 kernels with an NVIDIA graphics card:
+
+\begin{itemize}
+\item Checking clinfo (or anything else) will show that your NVIDIA device only supports
+  opencl 2.0.
+\item But, you can still compile a kernel with opencl 2.0: when
+  calling \texttt{cl::Program::build(...)} or \texttt{clBuildProgram(...)}, pass an additional
+  \texttt{const char*} argument (which contains the build flags):
+  \texttt{``-cl-std=CL2.0''}.
+\item Note, that nvidia has limited opencl 2.0 support... the
+  following is a thread from 2017 (\href{https://streamhpc.com/blog/2017-02-22/nvidia-enables-opencl-2-0-beta-support/}{link}): \newline
+  ``New features in OpenCL 2.0 are available in the driver for evaluation purposes only. The following are the features as well as a description of known issues in the driver:
+  \begin{itemize}
+  \item Device side enqueue
+    \begin{itemize}
+    \item The current implementation is limited to 64-bit platforms only.
+    \item OpenCL 2.0 allows kernels to be enqueued with
+      global\_work\_size larger than the compute capability of the
+      NVIDIA GPU. The current implementation supports only
+      combinations of global\_work\_size and local\_work\_size that are
+      within the compute capability of the NVIDIA GPU. The maximum
+      supported CUDA grid and block size of NVIDIA GPUs is available
+      at
+      \href{http://docs.nvidia.com/cuda/cuda-c-programming-guide/index.html#computecapabilities}{this link}. For
+      a given grid dimension, the global\_work\_size can be determined
+      by CUDA grid size x CUDA block size.
+    \item For executing kernels (whether from the host or the
+      device), OpenCL 2.0 supports non-uniform ND-ranges where
+      global\_work\_size does not need to be divisible by the
+      local\_work\_size. \textbf{This capability is not yet supported in the
+        NVIDIA driver}, and therefore not supported for device side
+      kernel enqueues.
+    \end{itemize}
+  \item Shared virtual memory: The current implementation of shared
+    virtual memory is limited to 64-bit platforms only.''
+  \end{itemize}
+\end{itemize}
+
+
+\end{document}
