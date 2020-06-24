@@ -25,7 +25,7 @@ public:
 	inline void ToGPU() override {
 		auto d = static_cast<GPUDevice*>(device);
 		if (! OnGPU()) {
-			cl::Context cont = d->Context();
+			cl::Context& cont = d->Context();
 			buffer = new cl::Buffer(cont, CL_MEM_READ_WRITE, sizeof(T)*cpuv->size());
 			size = cpuv->size();
 		}

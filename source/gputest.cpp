@@ -25,9 +25,51 @@ std::string read_file(const std::string& fname) {
 int main(int argc, char **argv) try {
 
 	GPUDevice gpu;
+    cl::CommandQueue& queue = gpu.Queue(0);
+
+    std::vector<int> A = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
+    std::vector<int> B = {0, 1, 2, 0, 1, 2, 0, 1, 2, 0};
+    GPUVector<int> GPUA(A, gpu);
+    GPUVector<int> GPUB(B, gpu);
+    GPUA.ToGPU();
+    GPUB.ToGPU();
+
+	std::vector<int> C(10,0);
+	GPUVector<int> GPUC(C, gpu);
+	GPUC.ToGPU();
+
+    // kernel calculates for each element C=A+B
+    std::string kernel_code=
+        "   void kernel simple_add(global const int* A, global const int* B, global int* C){       "
+        "       C[get_global_id(0)]=A[get_global_id(0)]+B[get_global_id(0)];                       "
+        "   }                                                                                      ";
 
 
-	std::string kernel_code=
+   	/*cl::Program::Sources sources;
+    sources.push_back({kernel_code.c_str(),kernel_code.length()});
+    cl::Program program(gpu.Context(),sources);
+    if(program.build({gpu.Device()})!=CL_SUCCESS){
+        std::cout<<" Error building: "<<program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(gpu.Device())<<"\n";
+        exit(1);
+    }
+    cl::Kernel simple_add(program, "simple_add");
+    simple_add.setArg(0, GPUA.GetBuffer());
+    simple_add.setArg(1, GPUB.GetBuffer());
+    simple_add.setArg(2, GPUC.GetBuffer());
+    queue.enqueueNDRangeKernel(simple_add,cl::NullRange,cl::NDRange(10),cl::NDRange(10));
+    queue.finish();*/
+
+    gpu.Execute(kernel_code, "simple_add", 0, cl::NullRange,cl::NDRange(10),cl::NDRange(10), 
+    			GPUA.GetBuffer(), GPUB.GetBuffer(), GPUC.GetBuffer());
+
+    GPUC.FromGPU();
+
+    std::cout << C << "\n";
+    std::cout << "\n";
+	//GPUDevice gpu(0,0);
+
+
+	std::string kernel_code1=
     	"   void kernel simple_add(global const int* A, global const int* B, global int* C, int n){ \n"
         "       int u = get_global_id(0);                                                           \n"
         "       float t = A[u]+B[n - u];                                                            \n"
@@ -43,7 +85,8 @@ int main(int argc, char **argv) try {
 
 	gv.ToGPU();
 
-	gpu.Execute(kernel_code, "simple_add", 0, {0,0,0}, {10}, {2}, gv, gv, gv, 9);
+	gpu.Execute(kernel_code, "simple_add", 0, {0,0,0}, {10}, {2},
+				gv.GetBuffer(), gv.GetBuffer(), gv.GetBuffer());
 
 	gv.FromGPU();
 

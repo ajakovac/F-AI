@@ -59,6 +59,7 @@ class GPUDevice : public GPUDeviceBase {
     inline Implementation Impl() const override {return Implementation::OpenCL;}
 
     inline cl::Context& Context() {return context;}
+    inline cl::Device& Device() {return device;}
     inline cl::CommandQueue& Queue(std::size_t n) {return queues[n];}
 
     // ---------------------------------------------------------------------------------------
