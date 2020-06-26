@@ -46,9 +46,7 @@ class GPUDevice : public GPUDeviceBase {
         queues.push_back(cl::CommandQueue(context, device));
 
         std::cout << "Using platform: "<<platform.getInfo<CL_PLATFORM_NAME>()<<"\n";
-        for (auto& p : all_platforms)
-            std::cout << p.getInfo<CL_PLATFORM_NAME>() << " ";
-        std::cout << "\n";
+	std::cout << "Using device: "<<device.getInfo<CL_DEVICE_NAME>()<<"\n";
 
     }
     // ---------------------------------------------------------------------------------------

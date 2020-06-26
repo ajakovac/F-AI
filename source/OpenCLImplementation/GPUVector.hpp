@@ -45,8 +45,7 @@ public:
 	}
 
 	inline cl::Buffer& GetBuffer() {return *buffer;}
-
-	inline operator cl::Buffer&() {return *buffer;}
+  
 };
 
 
