@@ -53,16 +53,25 @@ class GPUDevice : public GPUDeviceBase {
     // Getters:
 
     inline std::string PlatformName() const override {return platform.getInfo<CL_PLATFORM_NAME>();}
-    inline std::string DeviceName() const override {return device.getInfo<CL_DEVICE_NAME>();}
+    inline std::string Name() const override {return device.getInfo<CL_DEVICE_NAME>();}
+    inline std::size_t MaxWorkGroupSize() const {return device.getInfo<CL_DEVICE_MAX_WORK_GROUP_SIZE>();}
     inline Implementation Impl() const override {return Implementation::OpenCL;}
 
     inline cl::Context& Context() {return context;}
     inline cl::Device& Device() {return device;}
     inline cl::CommandQueue& Queue(std::size_t n) {return queues[n];}
 
+
     // ---------------------------------------------------------------------------------------
     // 
 
+    inline cl::Program* Compile(std::string const& code, std::string const& flags = "-cl-std=CL2.0") {
+        auto program = new cl::Program(context, { {code.c_str(), code.size()} } );
+        if (program->build({device}, flags.c_str()) != CL_SUCCESS)
+            throw Error(std::string("GPUDevice::Execute: Error building kernel code: ")
+                        + program->getBuildInfo<CL_PROGRAM_BUILD_LOG>(device));
+        return program;
+    }
 
 
     template<typename... Args>
@@ -73,17 +82,13 @@ class GPUDevice : public GPUDeviceBase {
                         cl::NDRange const& global,
                         cl::NDRange const& local,
                         Args&&... args) {
-        cl::Program::Sources sources;
-        sources.push_back({kernel_code.c_str(),kernel_code.size()});
-        cl::Program pr(context, sources);
-        if(pr.build({device}, "-cl-std=CL2.0")!=CL_SUCCESS)
-            throw Error(std::string("GPUDevice::Execute: Error building kernel code: ")
-                        + pr.getBuildInfo<CL_PROGRAM_BUILD_LOG>(device));
-        cl::Kernel ker(pr, function.c_str());
+        cl::Program *pr = Compile(kernel_code, "-cl-std=CL2.0");
+        cl::Kernel ker(*pr, function.c_str());
         execute_help(ker, 0, std::forward<Args>(args)...);
         auto queue = queues[qid];
         queue.enqueueNDRangeKernel(ker, offset, global, local);
         queue.finish();
+        delete pr;
     }
 
 
@@ -94,7 +99,7 @@ private:
         execute_help(ker, ++n, std::forward<Args>(args)...);
     }
 
-    inline void execute_help(cl::Kernel&, std::size_t n) {}
+    inline void execute_help(cl::Kernel&, std::size_t) {}
 };
 
 

@@ -18,6 +18,7 @@ public:
 	virtual void ToGPU() = 0;
 	virtual void FromGPU() = 0;
 
+	inline virtual std::size_t Size() const final {return size;}
 };
 
 #endif // F_AI_GPUVECTORBASE_HPP_

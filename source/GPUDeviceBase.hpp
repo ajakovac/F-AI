@@ -21,7 +21,7 @@ class GPUDeviceBase {
 public:
 
     virtual std::string PlatformName() const = 0;
-    virtual std::string DeviceName() const = 0;
+    virtual std::string Name() const = 0;
 
     virtual Implementation Impl() const = 0;
 

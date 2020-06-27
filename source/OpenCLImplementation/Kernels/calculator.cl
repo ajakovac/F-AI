@@ -41,29 +41,33 @@ kernel void ScalarMultiply(global double* A, global double* B, global double* bu
     ndrange_t ndr = ndrange_1D(n, subthread_size);
     
     //while (n >= 256) {
-    clk_event_t marker_event01; // o okozza a HIBAT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    // clk_event_t marker_event01; // o okozza a HIBAT !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     //clk_event_t marker_event2;
-    if (enqueue_kernel(get_default_queue(), CLK_ENQUEUE_FLAGS_NO_WAIT, ndr, 0, NULL, &marker_event01, 
+    if (enqueue_kernel(get_default_queue(), CLK_ENQUEUE_FLAGS_NO_WAIT, ndr, 
+    	//0, NULL, &marker_event01, 
+    	0, NULL, NULL, 
 		   ^(local void* target){
 		     scalarMultHelp(buffer, buffer_small, (local double*)target);
 		       }, subthread_size*sizeof(double) ) != CLK_SUCCESS) {
       buffer[0] = -1;
-      release_event(&marker_event01);
+      // release_event(&marker_event01);
       return;
     }
+    /*
     n = n/subthread_size;
     ndr = ndrange_1D(n, n);//subthread_size);
-    if (enqueue_kernel(get_default_queue(), CLK_ENQUEUE_FLAGS_NO_WAIT, 
-		     ndr, 1, &marker_event01, NULL, 
+    if (enqueue_kernel(get_default_queue(), CLK_ENQUEUE_FLAGS_NO_WAIT, ndr, 
+    	//1, &marker_event01, NULL, 
+    	0, NULL, NULL, 
 		       ^{scalarMultHelp2(buffer, buffer_small); }) != CLK_SUCCESS) {
-      release_event(&marker_event01);
+      // release_event(&marker_event01);
       buffer[0] = -2;
       return;
-      }
+      }*/
       /*
       enqueue_marker(get_default_queue(), 1, &marker_event2, NULL);
       */
-    release_event(&marker_event01);
+    // release_event(&marker_event01);
      //release_event(&marker_event2);
 
   /*
@@ -75,6 +79,6 @@ kernel void ScalarMultiply(global double* A, global double* B, global double* bu
 		     }, n*sizeof(double));
     }
   */
-      //}
-  }
+      }
+  //}
 }

@@ -32,7 +32,22 @@ public:
 		else if (size != cpuv->size())
 			throw Error("GPUVector::ToGPU: CPU vector size has changed.");
 		auto q = d->Queue(qid);
-		q.enqueueWriteBuffer(*buffer, CL_TRUE, 0, sizeof(T)*size, cpuv->data());
+		cl_int enq = q.enqueueWriteBuffer(*buffer, CL_TRUE, 0, sizeof(T)*size, cpuv->data());
+		if (enq != CL_SUCCESS) {
+			switch(enq) {
+			case CL_MEM_OBJECT_ALLOCATION_FAILURE:  
+				throw Error("GPUVector::ToGPU(): CL_MEM_OBJECT_ALLOCATION_FAILURE error during copying buffer to the GPU.");
+			case CL_INVALID_OPERATION: 
+				throw Error("GPUVector::ToGPU(): CL_INVALID_OPERATION error during copying buffer to the GPU.");
+			case CL_OUT_OF_RESOURCES:
+				throw Error("GPUVector::ToGPU(): CL_OUT_OF_RESOURCES error during copying buffer to the GPU.");
+			case CL_OUT_OF_HOST_MEMORY:
+				throw Error("GPUVector::ToGPU(): CL_OUT_OF_HOST_MEMORY error during copying buffer to the GPU.");
+			default:
+			throw Error("GPUVector::ToGPU(): Unknown error during copying buffer to the GPU. Error number: " + std::to_string(enq));
+			}
+			
+		}
 	};
 	
 	inline void FromGPU() override {
@@ -44,7 +59,12 @@ public:
 		q.enqueueReadBuffer(*buffer, CL_TRUE, 0, sizeof(T)*size, cpuv->data());
 	}
 
-	inline cl::Buffer& GetBuffer() {return *buffer;}
+	inline cl::Buffer& GetBuffer() {
+		if (! OnGPU()) throw Error("GPUVector::GetBuffer: not on GPU (GPU buffer is not allocated yet).");
+		return *buffer;
+	}
+
+	using GPUVectorBase<T>::Size;
   
 };
 

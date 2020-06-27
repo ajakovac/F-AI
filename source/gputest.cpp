@@ -1,10 +1,17 @@
 #include <iostream>
 #include "OpenCLImplementation/GPUDevice.hpp"
 #include "OpenCLImplementation/GPUVector.hpp"
+#include "OpenCLImplementation/GPUCompute.hpp"
+#include "OpenCLImplementation/DHVector.hpp"
+#include "Timer.hpp"
+
+#include "Rnd.hpp"
 
 #include <ranges>
 #include <sstream>
 #include <fstream>
+
+#include <numeric>
 
 template<typename T>
 std::ostream & operator<<(std::ostream &s, const std::vector<T> &x) {
@@ -22,82 +29,90 @@ std::string read_file(const std::string& fname) {
     return sstr.str();
 }
 
-int main(int argc, char **argv) try {
+int main(int, char **) try {
 
-	GPUDevice gpu;
-	/*cl::CommandQueue& queue = gpu.Queue(0);
+	Timer timer;
+	auto dist = normal_dist(1.0, 1.0);
+	auto dister = [=](double){return dist();};
 
-    std::vector<int> A = {0, 1, 2, 3, 4, 5, 6, 7, 8, 9};
-    std::vector<int> B = {0, 1, 2, 0, 1, 2, 0, 1, 2, 0};
-    GPUVector<int> GPUA(A, gpu);
-    GPUVector<int> GPUB(B, gpu);
-    GPUA.ToGPU();
-    GPUB.ToGPU();
+	std::cerr.precision(10);
+	std::cout.precision(10);
 
-	std::vector<int> C(10,0);
-	GPUVector<int> GPUC(C, gpu);
-	GPUC.ToGPU();
+	GPUDevice gpu(0,0);
 
-    // kernel calculates for each element C=A+B
-    std::string kernel_code=
-        "   void kernel simple_add(global const int* A, global const int* B, global int* C){       "
-        "       C[get_global_id(0)]=A[get_global_id(0)]+B[get_global_id(0)];                       "
-        "   }                                                                                      ";
+	GPUCompute comp(gpu, 0);
+	comp.SetWorkGroupSize(256);
 
-	/*
-   	/*cl::Program::Sources sources;
-    sources.push_back({kernel_code.c_str(),kernel_code.length()});
-    cl::Program program(gpu.Context(),sources);
-    if(program.build({gpu.Device()})!=CL_SUCCESS){
-        std::cout<<" Error building: "<<program.getBuildInfo<CL_PROGRAM_BUILD_LOG>(gpu.Device())<<"\n";
-        exit(1);
-    }
-    cl::Kernel simple_add(program, "simple_add");
-    simple_add.setArg(0, GPUA.GetBuffer());
-    simple_add.setArg(1, GPUB.GetBuffer());
-    simple_add.setArg(2, GPUC.GetBuffer());
-    queue.enqueueNDRangeKernel(simple_add,cl::NullRange,cl::NDRange(10),cl::NDRange(10));
-    queue.finish();*/
-	/*
-    gpu.Execute(kernel_code, "simple_add", 0, cl::NullRange,cl::NDRange(10),cl::NDRange(10), 
-		GPUA.GetBuffer(), GPUB.GetBuffer(), GPUC.GetBuffer());
+	std::size_t n = 60731253;
 
-    GPUC.FromGPU();
+	DHVector<double> A({&gpu, 0}, n, 1.1);
+	std::transform(A.begin(), A.end(), A.begin(), dister);
+	DHVector<double> B(&gpu, n, 1.0);	
+	DHVector<double> buffer(&gpu, n, 0.0);
+	DHVector<double> buffer_small(&gpu, (n-1)/comp.WorkGroupSize() + 1, 0.0);
 
-    std::cout << C << "\n";
-    std::cout << "\n";*/
-	//GPUDevice gpu(0,0);
+	timer.Record("CPU allocation.");
+
+	//std::vector<double> Av(n, 1.1); GPUVector<double> A(Av, gpu, 0); A.ToGPU();
+	//std::vector<double> Bv(n, 1.0); GPUVector<double> B(Bv, gpu, 0); B.ToGPU();
+	//std::vector<double> bufv(n, 0.0); GPUVector<double> buffer(bufv, gpu, 0); buffer.ToGPU();
+	//std::vector<double> bufsmallv( (n-1)/comp.WorkGroupSize() + 1, 0.0);
+	//GPUVector<double> buffer_small(bufsmallv, gpu); buffer_small.ToGPU();
+	
+	std::cerr << "A to gpu.\n";
+	A.ToGPU();
+	std::cerr << "B to gpu.\n";
+	B.ToGPU();
+	std::cerr << "buffer to gpu.\n";
+	buffer.ToGPU();
+	std::cerr << "buffer_small to gpu.\n";
+	buffer_small.ToGPU();
+
+	timer.Record("GPU allocation.");
+
+	comp.Multiply(A, B, buffer);
+	comp.Finish();
+	
+	timer.Record("GPU calculation.");
 
 
-	/*std::string kernel_code1=
-    	"   void kernel simple_add(global const int* A, global const int* B, global int* C, int n){ \n"
-        "       int u = get_global_id(0);                                                           \n"
-        "       float t = A[u]+B[n - u];                                                            \n"
-        "	    C[u]= 1000*sin(t);                                                                       \n"
-        "   }                                                                                  ";
+	//A[0] = 123;
+	//buffer[0] = 123;
 
-	std::string s = gpu.DeviceName();
-	std::cout << s << "\n";
 
-	std::vector<int> vec = {0,1,2,3,4,5,6,7,8,9};
+	A.FromGPU();
+	B.FromGPU();
+	buffer.FromGPU();
+	buffer_small.FromGPU();
 
-	GPUVector<int> gv(vec, gpu);
+	timer.Record("Copy back to CPU.");
 
-	gv.ToGPU();
+    //std::cerr << "from gpu sikeres\n";
+    std::cout << A[0] << "\n";
+	std::cout << B[0] << "\n";	
+	std::cout << buffer[0] << "\n";
+	//std::cout << buffer_small << "\n";
+	std::cout << buffer_small[0] << "\n";
 
-	gpu.Execute(kernel_code1, "simple_add", 0, {0,0,0}, {10}, {2},
-		    gv.GetBuffer(), gv.GetBuffer(), gv.GetBuffer(), 9);
+	std::cerr << timer << "\n";
 
-	gv.FromGPU();
+	Timer timer2;
 
-	std::cout << vec << "\n\n\n";
-	*/
-	std::vector<double> Av(512, 1); GPUVector<double> A(Av, gpu); A.ToGPU();
-	std::vector<double> Bv(512, 1); GPUVector<double> B(Bv, gpu); B.ToGPU();
-	std::vector<double> bufv(512, 0.0); GPUVector<double> buffer(bufv, gpu); buffer.ToGPU();
-	std::vector<double> bufsmallv(2, 0.0); 
-	GPUVector<double> buffer_small(bufsmallv, gpu); buffer_small.ToGPU();
+	std::vector<double> a(n, 1.1);
+	std::transform(a.begin(), a.end(), a.begin(), dister);
+	std::vector<double> b(n, 1.0);
+	std::vector<double> c(n, 1.0);
 
+	timer2.Record("Allocate CPU");
+	//std::cout << std::inner_product(a.begin(), a.end(), b.begin(), 0.0);
+	std::transform(a.begin(), a.end(), b.begin(), c.begin(), [](auto x, auto y){return x*y;});
+	timer2.Record("CPU calculation.");
+
+	std::cerr << timer2 << "\n";
+
+	return 0;
+
+/*
 	auto kernel_code2 = read_file("OpenCLImplementation/Kernels/calculator.cl");
 	gpu.Execute(kernel_code2, "ScalarMultiply", 0, {0,0,0}, {512}, {32}, 
 		    A.GetBuffer(), B.GetBuffer(), buffer.GetBuffer(),
@@ -118,7 +133,7 @@ int main(int argc, char **argv) try {
         std::cout<<" No platforms found. Check OpenCL installation!\n";
         exit(1);
     }
-    cl::Platform default_platform=all_platforms[0];
+    cl::Platform default_platform=all_platforms[1];
     std::cout << "Using platform: "<<default_platform.getInfo<CL_PLATFORM_NAME>()<<"\n";
  
     //get default device of the default platform
@@ -190,7 +205,11 @@ int main(int argc, char **argv) try {
     kernel_add.setArg(2,buffer_buffer);
     kernel_add.setArg(3,buffer_small);
     kernel_add.setArg(4,N);
-    queue.enqueueNDRangeKernel(kernel_add,cl::NullRange,cl::NDRange(N), cl::NDRange(32));
+
+    cl::Event k_events[2]; 
+
+    queue.enqueueNDRangeKernel(kernel_add,cl::NullRange,cl::NDRange(N), cl::NDRange(32), NULL, &k_events[0]);
+	k_events[0].wait();    
     queue.finish();
 
 
@@ -205,7 +224,7 @@ int main(int argc, char **argv) try {
  
     return 0;
 	}
-
+*/
 } 
 catch(Error &e) {
 	std::cerr << e.error_message << std::endl;
