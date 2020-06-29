@@ -53,8 +53,8 @@ public:
 	// ---------------------------------------------------------------------------------------
     // Modifiers:
 
-	inline void ToGPU() {
-		gpuv.ToGPU();}
+	inline void ToGPU(int F = CL_MEM_READ_WRITE) {
+		gpuv.ToGPU(F);}
 	inline void FromGPU() {gpuv.FromGPU();}
 
 private:

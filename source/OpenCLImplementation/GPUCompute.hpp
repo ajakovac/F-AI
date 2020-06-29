@@ -51,7 +51,7 @@ public:
 		ker.setArg(0, A.GetBuffer());
 		ker.setArg(1, B.GetBuffer());
 		ker.setArg(2, (int)(n));
-		std::cout << "copying with: " << (int)(n) << "\n";
+		//std::cout << "copying with: " << (int)(n) << "\n";
         device->Queue(queue_n).enqueueNDRangeKernel(ker, cl::NullRange, cl::NDRange(adjustGlobalSize(n)), 
         											cl::NDRange(work_group_size), 0, 0);
 	}
@@ -69,7 +69,7 @@ public:
 		ker.setArg(2, out.GetBuffer());
 		ker.setArg(3, (int)(n));
 		ker.setArg(4, (int)(50));
-		std::cout << "multiplying with: " << (int)(n) << "\n";
+		//std::cout << "multiplying with: " << (int)(n) << "\n";
         device->Queue(queue_n).enqueueNDRangeKernel(ker, cl::NullRange, cl::NDRange(adjustGlobalSize(n)), 
         											cl::NDRange(work_group_size), 0, 0);
 	}
@@ -81,8 +81,8 @@ public:
         InlineSum(buffer, buffer_small);
 	}
 
-	inline void InlineSum(GPUVector<double>& buffer, GPUVector<double>& buffer_small) {
-		std::size_t n = buffer.Size();
+	inline void InlineSum(GPUVector<double>& buffer, GPUVector<double>& buffer_small, std::size_t n=0) {
+		if (n==0) n = buffer.Size();
 		while (n > 1) { 
 			cl::Kernel ker(*program, "sumTo");
 			ker.setArg(0, buffer.GetBuffer());
@@ -100,8 +100,20 @@ public:
 
 	inline void ScalarMultiply(GPUVector<double>& A, GPUVector<double>& B, 
 							   GPUVector<double>& buffer, GPUVector<double>& buffer_small) {
-		Multiply(A, B, buffer);
-		InlineSum(buffer, buffer_small);
+		std::size_t n = A.Size();
+		cl::Kernel ker(*program, "scalarMult2");
+		ker.setArg(0, A.GetBuffer());
+		ker.setArg(1, B.GetBuffer());
+		ker.setArg(2, buffer_small.GetBuffer());
+		ker.setArg(3, int(n));
+		ker.setArg(4, sizeof(double) * work_group_size, NULL);
+        device->Queue(queue_n).enqueueNDRangeKernel(ker, cl::NullRange, cl::NDRange(adjustGlobalSize(n)), 
+        											cl::NDRange(work_group_size), 0, 0);
+        n = 1 + (n-1)/work_group_size;
+        Copy(buffer_small, buffer, n);
+
+		//Multiply(A, B, buffer);
+		InlineSum(buffer, buffer_small,n );
 	}
 
 	inline void Finish() {device->Queue(queue_n).finish();}

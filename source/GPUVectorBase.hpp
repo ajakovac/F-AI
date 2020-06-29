@@ -15,7 +15,7 @@ public:
 	inline GPUVectorBase(std::vector<T>& cpu_vec, GPUDeviceBase& d) : cpuv(&cpu_vec), 
 		size(cpu_vec.size()), device(&d) {}
 
-	virtual void ToGPU() = 0;
+	virtual void ToGPU(int) = 0;
 	virtual void FromGPU() = 0;
 
 	inline virtual std::size_t Size() const final {return size;}

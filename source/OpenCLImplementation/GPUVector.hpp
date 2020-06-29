@@ -22,11 +22,11 @@ public:
 
 	inline bool OnGPU() const {return buffer != nullptr;}
 
-	inline void ToGPU() override {
+	inline void ToGPU(int F = CL_MEM_READ_WRITE) override {
 		auto d = static_cast<GPUDevice*>(device);
 		if (! OnGPU()) {
 			cl::Context& cont = d->Context();
-			buffer = new cl::Buffer(cont, CL_MEM_READ_WRITE, sizeof(T)*cpuv->size());
+			buffer = new cl::Buffer(cont, F, sizeof(T)*cpuv->size());
 			size = cpuv->size();
 		}
 		else if (size != cpuv->size())

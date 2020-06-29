@@ -65,7 +65,7 @@ class GPUDevice : public GPUDeviceBase {
     // ---------------------------------------------------------------------------------------
     // 
 
-    inline cl::Program* Compile(std::string const& code, std::string const& flags = "-cl-std=CL2.0") {
+    inline cl::Program* Compile(std::string const& code, std::string const& flags = "") { // -cl-std=CL2.0
         auto program = new cl::Program(context, { {code.c_str(), code.size()} } );
         if (program->build({device}, flags.c_str()) != CL_SUCCESS)
             throw Error(std::string("GPUDevice::Execute: Error building kernel code: ")

@@ -10,6 +10,7 @@
 #include <ranges>
 #include <sstream>
 #include <fstream>
+#include <cmath>
 
 #include <numeric>
 
@@ -41,12 +42,12 @@ int main(int, char **) try {
 	GPUDevice gpu(0,0);
 
 	GPUCompute comp(gpu, 0);
-	comp.SetWorkGroupSize(256);
+	comp.SetWorkGroupSize(192);
 
 	std::size_t n = 60731253;
 
 	DHVector<double> A({&gpu, 0}, n, 1.1);
-	std::transform(A.begin(), A.end(), A.begin(), dister);
+	//std::transform(A.begin(), A.end(), A.begin(), dister);
 	DHVector<double> B(&gpu, n, 1.0);	
 	DHVector<double> buffer(&gpu, n, 0.0);
 	DHVector<double> buffer_small(&gpu, (n-1)/comp.WorkGroupSize() + 1, 0.0);
@@ -60,9 +61,9 @@ int main(int, char **) try {
 	//GPUVector<double> buffer_small(bufsmallv, gpu); buffer_small.ToGPU();
 	
 	std::cerr << "A to gpu.\n";
-	A.ToGPU();
+	A.ToGPU(CL_MEM_READ_ONLY);
 	std::cerr << "B to gpu.\n";
-	B.ToGPU();
+	B.ToGPU(CL_MEM_READ_ONLY);
 	std::cerr << "buffer to gpu.\n";
 	buffer.ToGPU();
 	std::cerr << "buffer_small to gpu.\n";
@@ -70,7 +71,8 @@ int main(int, char **) try {
 
 	timer.Record("GPU allocation.");
 
-	comp.Multiply(A, B, buffer);
+	for(int ii=0; ii<200; ++ii)
+		comp.ScalarMultiply(A, B, buffer,buffer_small);
 	comp.Finish();
 	
 	timer.Record("GPU calculation.");
@@ -99,13 +101,17 @@ int main(int, char **) try {
 	Timer timer2;
 
 	std::vector<double> a(n, 1.1);
-	std::transform(a.begin(), a.end(), a.begin(), dister);
+	//std::transform(a.begin(), a.end(), a.begin(), dister);
 	std::vector<double> b(n, 1.0);
 	std::vector<double> c(n, 1.0);
 
 	timer2.Record("Allocate CPU");
-	//std::cout << std::inner_product(a.begin(), a.end(), b.begin(), 0.0);
-	std::transform(a.begin(), a.end(), b.begin(), c.begin(), [](auto x, auto y){return x*y;});
+	double d;
+	for(int ii=0; ii<200; ++ii)
+		d = std::inner_product(a.begin(), a.end(), b.begin(), 0.0);
+	std::cout << d << std::endl;
+	//for(int ii=0; ii<20; ++ii)
+	//std::transform(a.begin(), a.end(), b.begin(), c.begin(), [](auto x, auto y){return x*y;});
 	timer2.Record("CPU calculation.");
 
 	std::cerr << timer2 << "\n";
