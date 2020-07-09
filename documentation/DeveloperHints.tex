@@ -26,6 +26,18 @@ Run the following in this order:
  \end{itemize}
 NOTE: for opencl with NVIDIA, it is enough to install the driver.
 
+\section*{Install nvidia driver and support}
+
+\begin{itemize}
+  \item remove and purge all former nvidia-related softwares: sudo apt-get remove --purge '^nvidia-.*'
+  \item eventually re-install ubuntu-desktop: sudo apt-get install ubuntu-desktop
+  \item install nvidia driver: from "Activities" run "Software & Updates", and choose one of them 
+  (last time I have chosen the open-source version)
+  \item reboot
+\end{itemize}
+In principle after running "clinfo", the nvidia driver should be seen. With "lshw -numeric -C display" the driver
+should be nvidia.
+
 \section*{OpenCL 2.0 with NVIDIA cards}
 How to run opencl 2.0 kernels with an NVIDIA graphics card:
 
